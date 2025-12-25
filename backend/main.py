@@ -1,11 +1,9 @@
-from typing import Union
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-
 from pathlib import Path
-
 import os
+import glob
 import yt_dlp
 
 app = FastAPI()
@@ -16,20 +14,28 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"]
 )
 
-downloads_dir  = Path ("./downloads")
+downloads_dir = Path("./downloads")
 downloads_dir.mkdir(parents=True, exist_ok=True)
+
+def cleanup_file(path: str):
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+    except Exception:
+        pass
 
 @app.get("/")
 def read_root():
-    return{"Hello":"World"}
+    return {"Hello": "World"}
 
-@app.get("/download/")
-def download(url: str):
+@app.get("/download")
+def download(url: str, background_tasks: BackgroundTasks):
     try:
         ydl_opts = {
-            'outtmpl': str(downloads_dir / '%(title).100s.%(ext)s'), 
+            'outtmpl': str(downloads_dir / '%(title)s.%(ext)s'),
             'format': 'bestaudio/best',
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
@@ -37,9 +43,10 @@ def download(url: str):
                 'preferredquality': '320',
             }],
             'quiet': False,
-            'restrictfilenames': True,  
+            'restrictfilenames': False,
         }
         
+        predicted_filename = ""
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             predicted_filename = ydl.prepare_filename(info)
@@ -48,13 +55,15 @@ def download(url: str):
         mp3_path = Path(predicted_filename).with_suffix('.mp3')
         
         if not mp3_path.exists():
-            import glob
-            mp3_files = glob.glob(str(downloads_dir / "*.mp3"))
-            if mp3_files:
-                mp3_path = Path(mp3_files[-1])  # Get the latest
+            list_of_files = glob.glob(str(downloads_dir / "*.mp3"))
+            if list_of_files:
+                latest_file = max(list_of_files, key=os.path.getctime)
+                mp3_path = Path(latest_file)
             else:
                 raise HTTPException(status_code=500, detail="File not found after download")
         
+        background_tasks.add_task(cleanup_file, str(mp3_path))
+
         return FileResponse(
             mp3_path,
             filename=mp3_path.name,
@@ -62,9 +71,5 @@ def download(url: str):
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
-    
-    
-
-    
-  
+        print(f"Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
