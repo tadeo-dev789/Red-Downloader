@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
+from urllib.parse import quote
 import os
 import glob
 import yt_dlp
@@ -14,7 +15,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["Content-Disposition", "X-Filename"]
+    expose_headers=["Content-Disposition", "X-Filename"] 
 )
 
 downloads_dir = Path("./downloads")
@@ -40,7 +41,7 @@ def download(url: str, background_tasks: BackgroundTasks):
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
-                'preferredquality': '320',
+                'preferredquality': '192',
             }],
             'quiet': False,
             'restrictfilenames': False,
@@ -64,10 +65,13 @@ def download(url: str, background_tasks: BackgroundTasks):
         
         background_tasks.add_task(cleanup_file, str(mp3_path))
 
+        safe_filename = quote(mp3_path.name)
+
         return FileResponse(
             mp3_path,
             filename=mp3_path.name,
-            media_type='audio/mpeg'
+            media_type='audio/mpeg',
+            headers={"X-Filename": safe_filename}
         )
         
     except Exception as e:
