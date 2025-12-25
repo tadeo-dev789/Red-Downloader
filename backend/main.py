@@ -1,12 +1,22 @@
 from typing import Union
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+
 from pathlib import Path
 
 import os
 import yt_dlp
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # En producción se pone la url especifica, aquí "*" es "todos"
+    allow_credentials=True,
+    allow_methods=["*"], # Permite GET, POST, PUT, DELETE, etc.
+    allow_headers=["*"],
+)
 
 downloads_dir  = Path ("./downloads")
 downloads_dir.mkdir(parents=True, exist_ok=True)

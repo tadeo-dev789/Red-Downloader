@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  AbsoluteCenter,
+  Flex,
   Button,
   Box,
   Input,
@@ -8,12 +8,16 @@ import {
   InputRightElement,
   IconButton,
   Stack,
-  Heading
+  Heading,
+  useToast
 } from '@chakra-ui/react'
 import { LinkIcon } from '@chakra-ui/icons'
 
 function App() {
+  
   const [value, setValue] = useState("")
+  const [loading, setLoading] = useState(false) // <--- Estado de carga
+  const toast = useToast()
 
   const handlePaste = async () => {
     try {
@@ -33,6 +37,35 @@ function App() {
     }
   }
 
+const handleDownload = async () => {
+    if (!value) return;
+
+    setLoading(true)
+    try {
+      const response = await fetch(`http://localhost:8000/download?url=${encodeURIComponent(value)}`);
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = "cancion.mp3";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        
+        toast({ title: "¡Descarga iniciada!", status: "success" })
+        setValue("")
+      } else {
+        toast({ title: "Error", description: "El backend rechazó la petición", status: "error" })
+      }
+    } catch (error) {
+      console.error(error);
+      toast({ title: "Error de conexión", status: "error" })
+    }
+    setLoading(false)
+  }
+
   return (
     <>
       <Box
@@ -40,7 +73,11 @@ function App() {
         minH="100vh"
         bg="red.500"
       >
-        <AbsoluteCenter axis="both">
+        <Flex 
+          minH  =   "100vh"
+          align =   "center" 
+          justify = "center"
+        >
           <Box
             bg="white"
             p={5}
@@ -61,6 +98,7 @@ function App() {
                   pr="4.5rem"
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
+                  disabled={loading}
                 />
 
                 <InputRightElement width="4.5rem">
@@ -72,6 +110,7 @@ function App() {
                     colorScheme="gray"
                     variant="ghost"
                     onClick={handlePaste}
+                    isDisabled={loading}
                   />
                 </InputRightElement>
               </InputGroup>
@@ -79,12 +118,17 @@ function App() {
               <Button
                 bg="red.600"
                 color="white"
+                size="lg"
+                _hover={{ bg: 'red.700' }}
+                onClick={handleDownload} 
+                isLoading={loading}      
+                loadingText="Convirtiendo..."                
               >
-                Descargar
+                Descargar MP3
               </Button>
             </Stack>
           </Box>
-        </AbsoluteCenter>
+        </Flex>
       </Box>
     </>
   )
