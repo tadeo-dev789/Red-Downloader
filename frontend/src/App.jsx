@@ -40,30 +40,64 @@ function App() {
 const handleDownload = async () => {
     if (!value) return;
 
-    setLoading(true)
+    setLoading(true);
+    
     try {
       const response = await fetch(`http://localhost:8000/download?url=${encodeURIComponent(value)}`);
 
-      if (response.ok) {
-        const blob = await response.blob();
-        const downloadUrl = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = downloadUrl;
-        a.download = "cancion.mp3";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        
-        toast({ title: "¡Descarga iniciada!", status: "success" })
-        setValue("")
-      } else {
-        toast({ title: "Error", description: "El backend rechazó la petición", status: "error" })
+      if (!response.ok) {
+        throw new Error("El servidor rechazó la descarga");
       }
+
+
+      let fileName = "cancion.mp3";
+      
+
+      const xFilename = response.headers.get('X-Filename');
+      
+      if (xFilename) {
+
+        fileName = decodeURIComponent(xFilename);
+      } else {
+
+        const disposition = response.headers.get('Content-Disposition');
+        if (disposition) {
+             const match = disposition.match(/filename="?([^"]+)"?/);
+             if (match && match[1]) fileName = match[1];
+        }
+      }
+
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.setAttribute('download', fileName); 
+      document.body.appendChild(link);
+      link.click();
+      
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+
+      toast({ 
+        title: "¡Descarga lista!", 
+        description: `Archivo: ${fileName}`, 
+        status: "success", 
+        duration: 4000 
+      });
+      
+      setValue(""); 
+
     } catch (error) {
       console.error(error);
-      toast({ title: "Error de conexión", status: "error" })
+      toast({ 
+        title: "Error al descargar", 
+        description: "Revisa la consola (F12) para ver el error.", 
+        status: "error" 
+      });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false)
   }
 
   return (
