@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: red-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000" # Opcional, solo por si quieres probar directo
+    volumes:
+      - ./downloads:/app/downloads # ¡CRUCIAL! Esto guarda los MP3 en tu carpeta real
+
+  frontend:
+    build: ./frontend
+    container_name: red-frontend
+    restart: unless-stopped
+    ports:
+      - "443:443"  # 👈 EL PUERTO SEGURO
+      - "80:80"    # Para la redirección automática
+    depends_on:
+      - backend

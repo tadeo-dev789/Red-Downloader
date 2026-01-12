@@ -43,7 +43,7 @@ const handleDownload = async () => {
     setLoading(true);
     
     try {
-      const response = await fetch(`http://localhost:8000/download?url=${encodeURIComponent(value)}`);
+     const response = await fetch(`/api/download?url=${encodeURIComponent(value)}`);
 
       if (!response.ok) {
         throw new Error("El servidor rechazó la descarga");

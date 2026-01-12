@@ -88,3 +88,9 @@ Desktop.ini
 # VS Code
 .vscode/
 *.code-workspace
+
+# Seguridad y Certificados
+frontend/certs/
+*.pem
+*.key
+*.crt
